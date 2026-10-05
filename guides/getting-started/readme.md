@@ -108,6 +108,28 @@ end
 Protocol::GRPC::Status::NAMES[status] # => "OK"
 ```
 
+### Limiting Message Size
+
+To bound the size of messages received from a peer, pass `maximum_size` to the readable body:
+
+``` ruby
+readable_body = Protocol::GRPC::Body::Readable.new(
+	response.body,
+	message_class: Hello::HelloReply,
+	maximum_size: 4 * 1024 * 1024
+)
+
+begin
+	message = readable_body.read
+ensure
+	readable_body.close
+end
+```
+
+The limit applies to each message's payload, excluding the five-byte frame prefix. Exactly the configured number of bytes is accepted. The declared frame length is checked before reading its payload, and gzip/deflate output is checked incrementally before it is accumulated. Exceeding either limit raises {ruby Protocol::GRPC::Error} with `RESOURCE_EXHAUSTED` status.
+
+The underlying HTTP body may already have buffered a chunk containing multiple frames; this option bounds gRPC message processing, not transport buffering. The default is `nil` (unlimited). A limit of zero allows only empty, uncompressed payloads.
+
 ### Server Middleware
 
 Create a server middleware by subclassing `Protocol::GRPC::Middleware`:
